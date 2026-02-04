@@ -7,11 +7,14 @@ from utils import map_posyandu
 # GOOGLE SHEET CONFIG
 # ==========================
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-SERVICE_ACCOUNT_FILE = "credentials.json"
 SPREADSHEET_ID = "13wTe-OdWVgDDmLGIrRI50FQN_6_AlS0OMrv96nIVRFw"
 BALITA_SHEET_NAME = "Balita"
 
-creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+# Mengambil kredensial dari Streamlit Secrets
+creds_dict = st.secrets["gizi_secrets"]
+creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+
+# Menghubungkan ke Google Sheets
 client = gspread.authorize(creds)
 sheet_balita = client.open_by_key(SPREADSHEET_ID).worksheet(BALITA_SHEET_NAME)
 
@@ -149,4 +152,5 @@ def delete_pengukuran_by_id(no_id):
         return True
     except Exception as e:
         print(f"Gagal hapus: {e}")
+
         return False
