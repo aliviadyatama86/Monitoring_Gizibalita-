@@ -13,10 +13,11 @@ st.set_page_config(
 def load_data():
     try:
         sh = client.open_by_key(SPREADSHEET_ID)
-        # Ambil data dan bersihkan spasi nama kolom sekaligus
+        # Ambil data Balita
         df_balita = pd.DataFrame(sh.worksheet("Balita").get_all_records())
         df_balita.columns = df_balita.columns.str.strip()
         
+        # Ambil data Pengukuran
         df_ukur = pd.DataFrame(sh.worksheet("Pengukuran").get_all_records())
         df_ukur.columns = df_ukur.columns.str.strip()
         
@@ -52,60 +53,23 @@ if not df_balita.empty:
     kolom_tgl = "Tanggal Pengukuran" #
     
     if kolom_tgl in df_ukur.columns and not df_ukur.empty:
-        # Konversi tanggal
+        # Konversi tanggal dan bersihkan data kosong
         df_ukur[kolom_tgl] = pd.to_datetime(df_ukur[kolom_tgl], errors='coerce')
         df_ukur = df_ukur.dropna(subset=[kolom_tgl])
         
-        # Hitung per tahun
+        # Agregasi per tahun
         df_ukur["Tahun"] = df_ukur[kolom_tgl].dt.year
         df_tren = df_ukur.groupby("Tahun").size().reset_index(name="Jumlah")
         
-        # Plotting
+        # Visualisasi 
         fig, ax = plt.subplots(figsize=(10, 4))
-        ax.plot(df_tren["Tahun"].astype(str), df_tren["Jumlah"], marker='o', color='#1f77b4')
+        ax.plot(df_tren["Tahun"].astype(str), df_tren["Jumlah"], marker='o', color='#1f77b4', linewidth=2)
+        ax.set_xlabel("Tahun")
         ax.set_ylabel("Jumlah Kunjungan")
         ax.grid(True, linestyle='--', alpha=0.6)
+        
         st.pyplot(fig)
     else:
         st.info("Data pengukuran belum tersedia untuk grafik.")
 else:
-    st.info("Menghubungkan ke Google Sheets...")
-
-    # ==================================================
-    # AGREGASI PER TAHUN
-    # ==================================================
-    df_ukur["Tahun"] = df_ukur[kolom_tgl].dt.year
-
-    df_tren = (
-        df_ukur
-        .groupby("Tahun")
-        .size()
-        .reset_index(name="Jumlah Kunjungan")
-        .sort_values("Tahun")
-    )
-
-    # ==================================================
-    # VISUALISASI
-    # ==================================================
-    fig, ax = plt.subplots()
-    ax.plot(
-        df_tren["Tahun"],
-        df_tren["Jumlah Kunjungan"],
-        marker="o"
-    )
-
-    ax.set_xlabel("Tahun")
-    ax.set_ylabel("Jumlah Kunjungan")
-    ax.set_title("Tren Kunjungan Posyandu per Tahun")
-    ax.grid(True)
-
-    st.pyplot(fig)
-
-else:
-    st.info("Belum ada data pengukuran.")
-
-
-
-
-
-
+    st.info("Menghubungkan ke Google Sheets atau data masih kosong...")
