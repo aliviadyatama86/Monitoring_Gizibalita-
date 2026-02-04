@@ -58,7 +58,7 @@ with col1:
     st.metric("👶 Total Balita", len(df_balita))
 
 with col2:
-    gizi_buruk = df_ukur[df_ukur["status_bbtb"] == "Gizi Buruk"]
+    gizi_buruk = df_ukur[df_ukur["Status BB/TB"] == "Gizi Buruk"]
     st.metric("⚠️ Balita Gizi Buruk", len(gizi_buruk))
 
 st.divider()
@@ -113,4 +113,5 @@ if not df_ukur.empty:
 
 else:
     st.info("Belum ada data pengukuran.")
+
 
