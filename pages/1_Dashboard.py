@@ -2,33 +2,46 @@
 # IMPORT LIBRARY
 # ======================================================
 import streamlit as st
-import sqlite3
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+from gsheet_utils import sheet_balita
+
+import streamlit as st
+import pandas as pd
+# Import client gspread dan spreadsheet dari utils Anda
+from gsheet_utils import client, SPREADSHEET_ID
 
 # ======================================================
 # KONFIGURASI HALAMAN
 # ======================================================
 st.set_page_config(
-    page_title="Dashboard",
+    page_title="Dashboard - Monitoring Gizi Balita",
     layout="wide"
 )
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, "database", "balita.db")
-
 # ======================================================
-# LOAD DATA
+# LOAD DATA DARI GOOGLE SHEETS
 # ======================================================
 def load_data():
-    conn = sqlite3.connect(DB_PATH)
-    df_balita = pd.read_sql("SELECT * FROM balita", conn)
-    df_ukur = pd.read_sql("SELECT * FROM pengukuran", conn)
-    conn.close()
-    return df_balita, df_ukur
+    try:
+        # Buka spreadsheet utama
+        sh = client.open_by_key(SPREADSHEET_ID)
+        
+        # Ambil data dari sheet 'Balita'
+        sheet_balita = sh.worksheet("Balita")
+        df_balita = pd.DataFrame(sheet_balita.get_all_records())
+        
+        # Ambil data dari sheet 'Pengukuran' (Pastikan nama sheet sesuai di GSheets Anda)
+        sheet_ukur = sh.worksheet("Pengukuran")
+        df_ukur = pd.DataFrame(sheet_ukur.get_all_records())
+        
+        return df_balita, df_ukur
+    except Exception as e:
+        st.error(f"Gagal memuat data dari Google Sheets: {e}")
+        return pd.DataFrame(), pd.DataFrame()
 
-
+# Panggil fungsi load_data
 df_balita, df_ukur = load_data()
 
 # ======================================================
@@ -100,3 +113,4 @@ if not df_ukur.empty:
 
 else:
     st.info("Belum ada data pengukuran.")
+
