@@ -58,10 +58,13 @@ with col1:
     st.metric("👶 Total Balita", len(df_balita))
 
 with col2:
-    gizi_buruk = df_ukur[df_ukur["Status BB/TB"] == "Gizi Buruk"]
-    st.metric("⚠️ Balita Gizi Buruk", len(gizi_buruk))
-
-st.divider()
+    # Menggunakan nama kolom yang sesuai dengan Google Sheets
+    kolom_status = "Status BB/TB" 
+    if kolom_status in df_ukur.columns:
+        gizi_buruk = df_ukur[df_ukur[kolom_status] == "Gizi Buruk"]
+        st.metric("⚠️ Balita Gizi Buruk", len(gizi_buruk))
+    else:
+        st.error(f"Kolom '{kolom_status}' tidak ditemukan!")
 
 # ======================================================
 # GRAFIK TREN KUNJUNGAN (PER TAHUN)
@@ -69,17 +72,22 @@ st.divider()
 st.subheader("📈 Tren Kunjungan Balita per Tahun")
 
 if not df_ukur.empty:
+    # 1. Definisikan nama kolom sesuai Google Sheets
+    kolom_tgl = "Tanggal Pengukuran" 
 
-    # ==================================================
-    # KONVERSI TANGGAL (ISO ONLY – WAJIB)
-    # ==================================================
-    df_ukur["tanggal_pengukuran"] = pd.to_datetime(
-        df_ukur["tanggal_pengukuran"],
-        errors="coerce"
-    )
+    if kolom_tgl in df_ukur.columns:
+        # 2. Konversi tanggal menggunakan nama kolom yang benar
+        df_ukur[kolom_tgl] = pd.to_datetime(
+            df_ukur[kolom_tgl],
+            errors="coerce"
+        )
 
-    # Buang data dengan tanggal tidak valid
-    df_ukur = df_ukur.dropna(subset=["tanggal_pengukuran"])
+        # 3. Buang data dengan tanggal tidak valid
+        df_ukur = df_ukur.dropna(subset=[kolom_tgl])
+        
+        # Lanjutkan ke proses pembuatan grafik Anda...
+    else:
+        st.error(f"Kolom '{kolom_tgl}' tidak ditemukan di Google Sheets Anda.")
 
     # ==================================================
     # AGREGASI PER TAHUN
@@ -113,5 +121,6 @@ if not df_ukur.empty:
 
 else:
     st.info("Belum ada data pengukuran.")
+
 
 
