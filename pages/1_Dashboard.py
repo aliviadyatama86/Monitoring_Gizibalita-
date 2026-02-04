@@ -4,12 +4,6 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import os
-from gsheet_utils import sheet_balita
-
-import streamlit as st
-import pandas as pd
-# Import client gspread dan spreadsheet dari utils Anda
 from gsheet_utils import client, SPREADSHEET_ID
 
 # ======================================================
@@ -25,24 +19,18 @@ st.set_page_config(
 # ======================================================
 def load_data():
     try:
-        # Buka spreadsheet utama
         sh = client.open_by_key(SPREADSHEET_ID)
+        df_balita = pd.DataFrame(sh.worksheet("Balita").get_all_records())
+        df_ukur = pd.DataFrame(sh.worksheet("Pengukuran").get_all_records())
         
-        # Ambil data dari sheet 'Balita'
-        sheet_balita = sh.worksheet("Balita")
-        df_balita = pd.DataFrame(sheet_balita.get_all_records())
-        
-        # Ambil data dari sheet 'Pengukuran' (Pastikan nama sheet sesuai di GSheets Anda)
-        sheet_ukur = sh.worksheet("Pengukuran")
-        df_ukur = pd.DataFrame(sheet_ukur.get_all_records())
+        # TAMBAHKAN DUA BARIS INI:
+        df_balita.columns = df_balita.columns.str.strip()
+        df_ukur.columns = df_ukur.columns.str.strip()
         
         return df_balita, df_ukur
     except Exception as e:
-        st.error(f"Gagal memuat data dari Google Sheets: {e}")
+        st.error(f"Gagal memuat data: {e}")
         return pd.DataFrame(), pd.DataFrame()
-
-# Panggil fungsi load_data
-df_balita, df_ukur = load_data()
 
 # ======================================================
 # JUDUL DASHBOARD
@@ -92,7 +80,7 @@ if not df_ukur.empty:
     # ==================================================
     # AGREGASI PER TAHUN
     # ==================================================
-    df_ukur["Tahun"] = df_ukur["tanggal_pengukuran"].dt.year
+    df_ukur["Tahun"] = df_ukur[kolom_tgl].dt.year
 
     df_tren = (
         df_ukur
@@ -121,6 +109,7 @@ if not df_ukur.empty:
 
 else:
     st.info("Belum ada data pengukuran.")
+
 
 
 
