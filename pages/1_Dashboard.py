@@ -1,88 +1,75 @@
-# ======================================================
-# IMPORT LIBRARY
-# ======================================================
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from gsheet_utils import client, SPREADSHEET_ID
+from gsheet_utils import client, SPREADSHEET_ID #
 
-import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-from gsheet_utils import client, SPREADSHEET_ID # Pemanggilan utils yang benar
-
-# ======================================================
-# KONFIGURASI HALAMAN
-# ======================================================
+# 1. Konfigurasi Halaman
 st.set_page_config(
     page_title="Dashboard - Monitoring Gizi Balita",
     layout="wide"
 )
 
-# ======================================================
-# LOAD DATA DARI GOOGLE SHEETS
-# ======================================================
+# 2. Fungsi Load Data
 def load_data():
     try:
         sh = client.open_by_key(SPREADSHEET_ID)
+        # Ambil data dan bersihkan spasi nama kolom sekaligus
         df_balita = pd.DataFrame(sh.worksheet("Balita").get_all_records())
-        df_ukur = pd.DataFrame(sh.worksheet("Pengukuran").get_all_records())
-        
-        # Bersihkan spasi di nama kolom
         df_balita.columns = df_balita.columns.str.strip()
+        
+        df_ukur = pd.DataFrame(sh.worksheet("Pengukuran").get_all_records())
         df_ukur.columns = df_ukur.columns.str.strip()
         
         return df_balita, df_ukur
     except Exception as e:
-        st.error(f"Gagal memuat data dari Google Sheets: {e}")
+        st.error(f"Gagal memuat data: {e}")
         return pd.DataFrame(), pd.DataFrame()
 
-# Panggil fungsi agar variabel df_balita dan df_ukur tersedia
+# 3. Jalankan Load Data
 df_balita, df_ukur = load_data()
 
-# ======================================================
-# TAMPILAN DASHBOARD
-# ======================================================
+# 4. Tampilan Dashboard
 st.title("📊 Dashboard Monitoring Gizi Balita")
 
-# Hanya jalankan jika data tidak kosong
-if not df_balita.empty and not df_ukur.empty:
-    # --- METRIC RINGKASAN ---
-    col1, col2 = st.columns(2)
-    with col1:
+if not df_balita.empty:
+    # --- METRIK UTAMA ---
+    c1, c2 = st.columns(2)
+    with c1:
         st.metric("👶 Total Balita", len(df_balita))
-
-    with col2:
-        kolom_status = "Status BB/TB" # Harus persis dengan GSheet
+    with c2:
+        # Gunakan nama kolom persis sesuai GSheet Anda
+        kolom_status = "Status BB/TB"
         if kolom_status in df_ukur.columns:
-            gizi_buruk = df_ukur[df_ukur[kolom_status] == "Gizi Buruk"]
-            st.metric("⚠️ Balita Gizi Buruk", len(gizi_buruk))
+            buruk = len(df_ukur[df_ukur[kolom_status] == "Gizi Buruk"])
+            st.metric("⚠️ Balita Gizi Buruk", buruk)
+        else:
+            st.warning(f"Kolom '{kolom_status}' tidak ditemukan")
 
     st.divider()
 
-    # --- GRAFIK TREN KUNJUNGAN ---
+    # --- GRAFIK TREN ---
     st.subheader("📈 Tren Kunjungan Balita per Tahun")
-    kolom_tgl = "Tanggal Pengukuran" # Harus persis dengan GSheet
-
-    if kolom_tgl in df_ukur.columns:
-        # Konversi ke datetime
-        df_ukur[kolom_tgl] = pd.to_datetime(df_ukur[kolom_tgl], errors="coerce")
+    kolom_tgl = "Tanggal Pengukuran" #
+    
+    if kolom_tgl in df_ukur.columns and not df_ukur.empty:
+        # Konversi tanggal
+        df_ukur[kolom_tgl] = pd.to_datetime(df_ukur[kolom_tgl], errors='coerce')
         df_ukur = df_ukur.dropna(subset=[kolom_tgl])
         
-        # Agregasi per Tahun
+        # Hitung per tahun
         df_ukur["Tahun"] = df_ukur[kolom_tgl].dt.year
         df_tren = df_ukur.groupby("Tahun").size().reset_index(name="Jumlah")
-
-        # Visualisasi
+        
+        # Plotting
         fig, ax = plt.subplots(figsize=(10, 4))
-        ax.plot(df_tren["Tahun"], df_tren["Jumlah"], marker="o", color="blue")
-        ax.set_xlabel("Tahun")
+        ax.plot(df_tren["Tahun"].astype(str), df_tren["Jumlah"], marker='o', color='#1f77b4')
         ax.set_ylabel("Jumlah Kunjungan")
+        ax.grid(True, linestyle='--', alpha=0.6)
         st.pyplot(fig)
     else:
-        st.warning(f"Kolom '{kolom_tgl}' tidak ditemukan.")
+        st.info("Data pengukuran belum tersedia untuk grafik.")
 else:
-    st.info("Menunggu data dari Google Sheets...")
+    st.info("Menghubungkan ke Google Sheets...")
 
     # ==================================================
     # AGREGASI PER TAHUN
@@ -116,6 +103,7 @@ else:
 
 else:
     st.info("Belum ada data pengukuran.")
+
 
 
 
