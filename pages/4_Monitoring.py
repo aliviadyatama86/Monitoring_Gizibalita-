@@ -65,7 +65,7 @@ if mode == "Individu":
     if "Gizi Buruk" in s_bbtb or "Sangat Pendek" in s_tbu:
         msg_color = "error"
         kesimpulan = "🚨 Perlu Rujukan / Intervensi Segera"
-        narasi = f"Hasil deteksi ({tgl_str}) menunjukkan indikasi masalah gizi kronis. Segera lakukan rujukan medis."
+        narasi = f"Hasil deteksi ({tgl_str}) menunjukkan indikasi masalah gizi kronis. Segera lakukan rujukan medis dan Berikan PMT selama 90 hari"
     elif "Kurang" in s_bbu or "Pendek" in s_tbu or "Gizi Kurang" in s_bbtb:
         msg_color = "warning"
         kesimpulan = "⚠️ Perlu Pemantauan Intensif"
@@ -213,3 +213,4 @@ with c2:
 with c3:
     st.warning("⚠️ **Gizi Lebih / Obesitas (Biru/Ungu)**")
     st.write("- Evaluasi pola asuh makan (batasi gula & lemak).\n- Tingkatkan aktivitas fisik dan stimulasi motorik.")
+
