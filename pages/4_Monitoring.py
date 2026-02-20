@@ -93,6 +93,8 @@ df_plot = df_plot.sort_values("Tanggal Pengukuran")
 # --- GRAFIK TREN Z-SCORE ---
 st.subheader(f"📈 Grafik Tren Z-Score: {nama_pilihan}")
 
+import numpy as np # Tambahkan import ini di atas jika belum ada
+
 metrics = [
     ("Z-Score BB/U", "Berat Badan menurut Umur (BB/U)"),
     ("Z-Score TB/U", "Tinggi Badan menurut Umur (TB/U)"),
@@ -102,37 +104,51 @@ metrics = [
 for col_name, label_text in metrics:
     fig, ax = plt.subplots(figsize=(11, 5))
     
+    # Ambil Tahun saja untuk sumbu X
+    df_plot['Tahun_Plot'] = df_plot["Tanggal Pengukuran"].dt.year
+    unique_years = sorted(df_plot['Tahun_Plot'].unique())
+
     if mode == "Individu":
-        # Grafik Garis untuk Individu
-        x_labels = df_plot["Tanggal Pengukuran"].dt.strftime('%m-%y')
-        ax.plot(x_labels, df_plot[col_name], marker="o", linestyle="-", color="#1f77b4", label="Nilai Z-Score")
-        rotation, alignment = 45, 'right'
+        # Grafik Garis untuk Individu (Urut berdasarkan tanggal asli agar garis tidak berantakan)
+        df_plot_sorted = df_plot.sort_values("Tanggal Pengukuran")
+        ax.plot(df_plot_sorted['Tanggal Pengukuran'], df_plot_sorted[col_name], 
+                marker="o", linestyle="-", color="#1f77b4", label="Nilai Z-Score")
+        
+        # Format X agar hanya muncul tahun
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+        ax.xaxis.set_major_locator(mdates.YearLocator())
+    
     else:
-        # REVISI: Scatter Plot dengan Sumbu X Bulanan agar tidak menumpuk vertikal
-        df_plot['Bulan_Plot'] = df_plot["Tanggal Pengukuran"].dt.strftime('%b %Y')
-        # Pastikan urutan kronologis tetap terjaga
-        unique_months = df_plot.sort_values("Tanggal Pengukuran")['Bulan_Plot'].unique()
+        # MODE SELURUH DATA: Scatter Plot dengan Jitter agar data lebih terbaca
+        # Jitter membantu titik yang nilainya sama tidak saling menutupi 100%
+        jitter = np.random.uniform(-0.15, 0.15, size=len(df_plot))
         
-        ax.scatter(df_plot['Bulan_Plot'], df_plot[col_name], 
-                   color="#1f77b4", alpha=0.35, s=45, edgecolors='white', label="Data Balita")
+        ax.scatter(df_plot['Tahun_Plot'] + jitter, df_plot[col_name], 
+                   color="#1f77b4", alpha=0.3, s=30, edgecolors='none', label="Data Balita")
         
-        # Garis Rata-rata Tren Bulanan
-        avg_trend = df_plot.groupby('Bulan_Plot')[col_name].mean().reindex(unique_months)
-        ax.plot(avg_trend.index, avg_trend.values, color="red", marker="D", markersize=5, 
-                linewidth=1.5, label="Rata-rata Populasi", alpha=0.8)
+        # Garis Rata-rata Tren Tahunan
+        avg_trend = df_plot.groupby('Tahun_Plot')[col_name].mean()
+        ax.plot(avg_trend.index, avg_trend.values, color="red", marker="D", markersize=6, 
+                linewidth=2, label="Rata-rata Populasi", zorder=5)
         
-        rotation, alignment = 45, 'right'
+        # Atur agar ticks hanya angka tahun bulat
+        ax.set_xticks(unique_years)
+        ax.set_xticklabels([str(y) for y in unique_years])
 
     # Garis ambang batas WHO
-    ax.axhline(0, color="green", linestyle="--", alpha=0.5, label="Median")
-    ax.axhline(-2, color="red", linestyle="--", alpha=0.5, label="-2 SD")
-    ax.axhline(2, color="red", linestyle="--", alpha=0.5, label="+2 SD")
+    ax.axhline(0, color="green", linestyle="-", alpha=0.3, label="Median")
+    ax.axhline(-2, color="red", linestyle="--", alpha=0.5, label="-2 SD (Stunting/Underweight)")
+    ax.axhline(2, color="red", linestyle="--", alpha=0.5, label="+2 SD (Overweight)")
     
+    # Batas Y agar grafik tidak terlalu flat atau terlalu ekstrem (Opsional)
+    ax.set_ylim(df_plot[col_name].min() - 1, df_plot[col_name].max() + 1)
+
     ax.set_ylabel(f"Nilai {col_name}") 
     ax.set_title(f"Sebaran Tren {label_text}")
-    plt.xticks(rotation=rotation, ha=alignment) 
     ax.legend(loc='upper left', fontsize='small', bbox_to_anchor=(1, 1))
-    ax.grid(True, linestyle=':', alpha=0.6)
+    ax.grid(True, linestyle=':', alpha=0.4)
+    
+    plt.tight_layout()
     st.pyplot(fig)
 
 # =====================================================
@@ -213,4 +229,5 @@ with c2:
 with c3:
     st.warning("⚠️ **Gizi Lebih / Obesitas (Biru/Ungu)**")
     st.write("- Evaluasi pola asuh makan (batasi gula & lemak).\n- Tingkatkan aktivitas fisik dan stimulasi motorik.")
+
 
