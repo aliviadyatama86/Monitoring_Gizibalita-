@@ -93,58 +93,42 @@ df_plot = df_plot.sort_values("Tanggal Pengukuran")
 # --- GRAFIK TREN Z-SCORE ---
 st.subheader(f"📈 Grafik Tren Z-Score: {nama_pilihan}")
 
-import numpy as np # Tambahkan import ini di atas jika belum ada
-
-metrics = [
-    ("Z-Score BB/U", "Berat Badan menurut Umur (BB/U)"),
-    ("Z-Score TB/U", "Tinggi Badan menurut Umur (TB/U)"),
-    ("Z-Score BB/TB", "Berat Badan menurut Tinggi Badan (BB/TB)")
-]
-
 for col_name, label_text in metrics:
     fig, ax = plt.subplots(figsize=(11, 5))
     
-    # Ambil Tahun saja untuk sumbu X
-    df_plot['Tahun_Plot'] = df_plot["Tanggal Pengukuran"].dt.year
-    unique_years = sorted(df_plot['Tahun_Plot'].unique())
+    # Pastikan data terurut berdasarkan waktu
+    df_plot = df_plot.sort_values("Tanggal Pengukuran")
 
     if mode == "Individu":
-        # Grafik Garis untuk Individu (Urut berdasarkan tanggal asli agar garis tidak berantakan)
-        df_plot_sorted = df_plot.sort_values("Tanggal Pengukuran")
-        ax.plot(df_plot_sorted['Tanggal Pengukuran'], df_plot_sorted[col_name], 
+        # Grafik Garis untuk Individu
+        ax.plot(df_plot['Tanggal Pengukuran'], df_plot[col_name], 
                 marker="o", linestyle="-", color="#1f77b4", label="Nilai Z-Score")
-        
-        # Format X agar hanya muncul tahun
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
-        ax.xaxis.set_major_locator(mdates.YearLocator())
-    
     else:
-        # MODE SELURUH DATA: Scatter Plot dengan Jitter agar data lebih terbaca
-        # Jitter membantu titik yang nilainya sama tidak saling menutupi 100%
-        jitter = np.random.uniform(-0.15, 0.15, size=len(df_plot))
+        ax.scatter(df_plot['Tanggal Pengukuran'], df_plot[col_name], 
+                   color="#1f77b4", alpha=0.4, s=25, edgecolors='white', 
+                   linewidth=0.3, label="Data Balita")
         
-        ax.scatter(df_plot['Tahun_Plot'] + jitter, df_plot[col_name], 
-                   color="#1f77b4", alpha=0.3, s=30, edgecolors='none', label="Data Balita")
-        
-        # Garis Rata-rata Tren Tahunan
-        avg_trend = df_plot.groupby('Tahun_Plot')[col_name].mean()
-        ax.plot(avg_trend.index, avg_trend.values, color="red", marker="D", markersize=6, 
-                linewidth=2, label="Rata-rata Populasi", zorder=5)
-        
-        # Atur agar ticks hanya angka tahun bulat
-        ax.set_xticks(unique_years)
-        ax.set_xticklabels([str(y) for y in unique_years])
+        # Garis Rata-rata: Dihitung per bulan agar tetap mengikuti alur data
+        avg_trend = df_plot.groupby(df_plot["Tanggal Pengukuran"].dt.to_period("M"))[col_name].mean()
+        ax.plot(avg_trend.index.to_timestamp(), avg_trend.values, 
+                color="red", marker="D", markersize=4, linewidth=1.5, 
+                label="Rata-rata Populasi", zorder=5)
 
+    # Menggunakan YearLocator agar label yang muncul HANYA TAHUN
+    ax.xaxis.set_major_locator(mdates.YearLocator()) 
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+    
     # Garis ambang batas WHO
     ax.axhline(0, color="green", linestyle="-", alpha=0.3, label="Median")
-    ax.axhline(-2, color="red", linestyle="--", alpha=0.5, label="-2 SD (Stunting/Underweight)")
-    ax.axhline(2, color="red", linestyle="--", alpha=0.5, label="+2 SD (Overweight)")
+    ax.axhline(-2, color="red", linestyle="--", alpha=0.5, label="-2 SD")
+    ax.axhline(2, color="red", linestyle="--", alpha=0.5, label="+2 SD")
     
-    # Batas Y agar grafik tidak terlalu flat atau terlalu ekstrem (Opsional)
+    # Batas Y dinamis
     ax.set_ylim(df_plot[col_name].min() - 1, df_plot[col_name].max() + 1)
 
     ax.set_ylabel(f"Nilai {col_name}") 
     ax.set_title(f"Sebaran Tren {label_text}")
+    
     ax.legend(loc='upper left', fontsize='small', bbox_to_anchor=(1, 1))
     ax.grid(True, linestyle=':', alpha=0.4)
     
@@ -229,5 +213,6 @@ with c2:
 with c3:
     st.warning("⚠️ **Gizi Lebih / Obesitas (Biru/Ungu)**")
     st.write("- Evaluasi pola asuh makan (batasi gula & lemak).\n- Tingkatkan aktivitas fisik dan stimulasi motorik.")
+
 
 
