@@ -166,32 +166,30 @@ with col_chart:
     st.pyplot(fig_pie)
 
 with col_table:
+    # --- REVISI: FILTER DROPDOWN KELOMPOK GIZI ---
     if mode == "Seluruh Data":
         st.write("**🔍 Filter Detail Kelompok Gizi:**")
         
-        # REVISI: Dropdown mengikuti nama target yang diinginkan
-        target_options = ["Gizi Buruk", "Gizi Kurang", "Gizi Baik", "Resiko Gizi Lbh", "Gizi Lebih", "Obesitas"]
-        available_options = [opt for opt in target_options if opt in df_latest_status["Status BB/TB"].unique()]
+        # Opsi dropdown sesuai urutan standar gizi
+        opsi_gizi = ["Gizi Buruk", "Gizi Kurang", "Gizi Baik", "Resiko Gizi Lbh", "Gizi Lebih", "Obesitas"]
+        opsi_tersedia = [o for o in opsi_gizi if o in df_latest_status["Status BB/TB"].unique()]
         
-        pilihan_filter = st.selectbox("Pilih Kategori Gizi:", available_options)
+        pilihan = st.selectbox("Pilih Kategori untuk Lihat Detail:", opsi_tersedia)
         
-        df_detail = df_latest_status[df_latest_status["Status BB/TB"] == pilihan_filter].copy()
+        # Filter Data
+        df_detail = df_latest_status[df_latest_status["Status BB/TB"] == pilihan].copy()
         
-        # REVISI: Tanggal bersih tanpa jam
+        # Format tanggal agar jam hilang (Tampilan lebih bersih dari image_33b460)
         df_detail["Tanggal"] = df_detail["Tanggal Pengukuran"].dt.strftime('%d-%m-%Y')
         
-        # REVISI: Menampilkan Nama Ibu dan Posyandu
-        show_cols = ["Nama Anak", "Tanggal", "Nama Ibu", "Posyandu", "Status BB/TB"]
+        # --- PERBAIKAN UTAMA: Tambahkan 'Nama Ibu' dan 'Posyandu' di sini ---
+        show_cols = ["Nama Anak", "Nama Ibu", "Posyandu", "Tanggal", "Status BB/TB"]
+        
+        # Pastikan kolom benar-benar ada di dataframe sebelum ditampilkan
         actual_cols = [c for c in show_cols if c in df_detail.columns]
         
         st.dataframe(df_detail[actual_cols], use_container_width=True, hide_index=True)
-        st.caption(f"Total: {len(df_detail)} anak dalam kategori {pilihan_filter}")
-    else:
-        st.write("**Riwayat Pengukuran:**")
-        df_table = df_plot.copy()
-        df_table["Tanggal"] = df_table["Tanggal Pengukuran"].dt.strftime('%m-%y')
-        display_cols = ["Nama Anak", "Tanggal", "Status BB/U", "Status TB/U", "Status BB/TB"]
-        st.dataframe(df_table[display_cols], use_container_width=True, hide_index=True)
+        st.write(f"Total: {len(df_detail)} anak dalam kategori {pilihan}")
 
 # =====================================================
 # EDUKASI
@@ -210,3 +208,4 @@ with c2:
 with c3:
     st.warning("⚠️ **Gizi Lebih / Obesitas (Biru/Ungu)**")
     st.write("- Evaluasi pola asuh makan (batasi gula & lemak).\n- Tingkatkan aktivitas fisik dan stimulasi motorik.")
+
