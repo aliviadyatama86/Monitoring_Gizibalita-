@@ -91,24 +91,31 @@ else:
 df_plot = df_plot.sort_values("Tanggal Pengukuran")
 
 # =====================================================
-# 1. PERBAIKAN PREPROCESSING (PASTIKAN DATA TERBACA)
+# REVISI TOTAL: PREPROCESSING & GRAFIK
 # =====================================================
-# Paksa konversi tanggal dengan format yang lebih fleksibel
-df_ukur["Tanggal Pengukuran"] = pd.to_datetime(df_ukur["Tanggal Pengukuran"], errors="coerce")
 
-# CEK: Jika data 2023 hilang, kemungkinan karena format tanggal di Excel/GSheet salah.
-# Kita hapus baris yang tanggalnya gagal dikonversi (NaT)
+# 1. Pastikan konversi tanggal benar-benar bersih dan fleksibel
+df_ukur["Tanggal Pengukuran"] = pd.to_datetime(df_ukur["Tanggal Pengukuran"], errors="coerce")
 df_ukur = df_ukur.dropna(subset=["Tanggal Pengukuran"])
 
-# Pastikan tahun 2023 masuk dalam rentang filter
+# 2. Filter rentang tahun (Pastikan 2023 masuk)
 df_ukur = df_ukur[df_ukur["Tanggal Pengukuran"].dt.year >= 2021]
 
-# =====================================================
-# 2. PERBAIKAN GRAFIK (AGAR DATA 2023 MUNCUL)
-# =====================================================
+# 3. Logika Filter Data untuk Plot
+# Kita buat df_plot SETELAH preprocessing selesai
+if mode == "Individu":
+    daftar_nama = sorted(df_ukur["Nama Anak"].unique().tolist())
+    nama_pilihan = st.selectbox("Pilih Balita", daftar_nama)
+    df_plot = df_ukur[df_ukur["Nama Anak"] == nama_pilihan].copy()
+else:
+    df_plot = df_ukur.copy()
+    nama_pilihan = "Semua Balita"
+
+# Sortir agar urutan waktu benar
+df_plot = df_plot.sort_values("Tanggal Pengukuran")
+
 st.subheader(f"📈 Grafik Tren Z-Score: {nama_pilihan}")
 
-# Pastikan variabel metrics didefinisikan agar tidak NameError
 metrics = [
     ("Z-Score BB/U", "Berat Badan menurut Umur (BB/U)"),
     ("Z-Score TB/U", "Tinggi Badan menurut Umur (TB/U)"),
@@ -118,34 +125,32 @@ metrics = [
 for col_name, label_text in metrics:
     fig, ax = plt.subplots(figsize=(11, 5))
     
-    # Sortir data berdasarkan tanggal agar garis rata-rata tidak berantakan
-    df_plot = df_plot.sort_values("Tanggal Pengukuran")
-
     if mode == "Individu":
         ax.plot(df_plot['Tanggal Pengukuran'], df_plot[col_name], 
                 marker="o", linestyle="-", color="#1f77b4", label="Nilai Z-Score")
     else:
-        # Gunakan Scatter Plot agar sebaran terlihat merata
+        # Scatter plot agar menyebar merata (seperti gambar yang Anda inginkan)
         ax.scatter(df_plot['Tanggal Pengukuran'], df_plot[col_name], 
-                   color="#1f77b4", alpha=0.4, s=25, edgecolors='white', linewidth=0.3, label="Data Balita")
+                   color="#1f77b4", alpha=0.35, s=25, edgecolors='white', linewidth=0.3, label="Data Balita")
         
-        # Garis Rata-rata: Menggunakan rata-rata per 3 bulan agar garis menyambung melewati celah data
+        # Garis Rata-rata: Dihitung per 3 bulan agar tidak terputus jika data 2023 sedikit
         avg_trend = df_plot.groupby(df_plot["Tanggal Pengukuran"].dt.to_period("3M"))[col_name].mean()
         ax.plot(avg_trend.index.to_timestamp(), avg_trend.values, 
                 color="red", marker="D", markersize=4, linewidth=1.5, label="Rata-rata Populasi")
 
-    # PENGATURAN SUMBU X: Menampilkan label per tahun dengan benar
+    # --- PENGATURAN SUMBU X ---
     ax.xaxis.set_major_locator(mdates.YearLocator()) 
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
     
-    # Batas Standar WHO
+    # Batas WHO
     ax.axhline(0, color="green", linestyle="-", alpha=0.3, label="Median")
     ax.axhline(-2, color="red", linestyle="--", alpha=0.5, label="-2 SD")
     ax.axhline(2, color="red", linestyle="--", alpha=0.5, label="+2 SD")
     
-    # Zoom otomatis pada area data yang ada
+    # Atur batas Y agar tidak terlalu jauh
     if not df_plot.empty:
-        ax.set_ylim(df_plot[col_name].min() - 1, df_plot[col_name].max() + 1)
+        ymin, ymax = df_plot[col_name].min(), df_plot[col_name].max()
+        ax.set_ylim(min(ymin, -3) - 0.5, max(ymax, 3) + 0.5)
 
     ax.set_ylabel(f"Nilai {col_name}") 
     ax.set_title(f"Sebaran Tren {label_text}")
@@ -154,6 +159,10 @@ for col_name, label_text in metrics:
     
     plt.tight_layout()
     st.pyplot(fig)
+
+# Debugging sederhana (Hanya muncul jika data tetap tidak ada)
+if 2023 not in df_plot["Tanggal Pengukuran"].dt.year.values:
+    st.error("🚨 Sistem tetap tidak menemukan data tahun 2023. Periksa apakah format tanggal di Google Sheets sudah benar (YYYY-MM-DD).")
 
 # =====================================================
 # ANALISIS STATUS GIZI TERAKHIR
@@ -233,6 +242,7 @@ with c2:
 with c3:
     st.warning("⚠️ **Gizi Lebih / Obesitas (Biru/Ungu)**")
     st.write("- Evaluasi pola asuh makan (batasi gula & lemak).\n- Tingkatkan aktivitas fisik dan stimulasi motorik.")
+
 
 
 
