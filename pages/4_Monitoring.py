@@ -108,35 +108,37 @@ for col_name, label_text in metrics:
         # Grafik Garis untuk Individu
         df_plot_sorted = df_plot.sort_values("Tanggal Pengukuran")
         ax.plot(df_plot_sorted['Tanggal Pengukuran'], df_plot_sorted[col_name], 
-                marker="o", linestyle="-", color="#1f77b4", label="Nilai Z-Score")
+                marker="o", linestyle="-", color="#1f77b4", label="Nilai Z-Score", markersize=8)
         
-        # Format X agar hanya muncul tahun
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
         ax.xaxis.set_major_locator(mdates.YearLocator())
     
     else:
-        # MODE SELURUH DATA: Scatter Plot dengan Jitter agar data menyebar horizontal
-        jitter = np.random.uniform(-0.15, 0.15, size=len(df_plot))
+        # MODE SELURUH DATA: Perbaikan ukuran titik dan sebaran
+        # Jitter diperlebar sedikit ke 0.2 agar sebaran lebih jelas
+        jitter = np.random.uniform(-0.20, 0.20, size=len(df_plot))
         
+        # s=60 (lebih besar), edgecolors='white' (lebih tajam), alpha=0.5 (lebih kontras)
         ax.scatter(df_plot['Tahun_Plot'] + jitter, df_plot[col_name], 
-                   color="#1f77b4", alpha=0.3, s=30, edgecolors='none', label="Data Balita")
+                   color="#1f77b4", alpha=0.5, s=60, edgecolors='white', 
+                   linewidth=0.5, label="Data Balita", zorder=3)
         
-        # Garis Rata-rata Tren Tahunan
+        # Garis Rata-rata Tren Tahunan (Dibuat lebih menonjol dengan zorder lebih tinggi)
         avg_trend = df_plot.groupby('Tahun_Plot')[col_name].mean()
-        ax.plot(avg_trend.index, avg_trend.values, color="red", marker="D", markersize=6, 
-                linewidth=2, label="Rata-rata Populasi", zorder=5)
+        ax.plot(avg_trend.index, avg_trend.values, color="red", marker="D", markersize=8, 
+                linewidth=2.5, label="Rata-rata Populasi", zorder=5)
         
-        # Atur agar ticks hanya angka tahun bulat
         ax.set_xticks(unique_years)
         ax.set_xticklabels([str(y) for y in unique_years])
 
     # Garis ambang batas WHO
-    ax.axhline(0, color="green", linestyle="-", alpha=0.3, label="Median")
-    ax.axhline(-2, color="red", linestyle="--", alpha=0.5, label="-2 SD (Zona Merah)")
-    ax.axhline(2, color="red", linestyle="--", alpha=0.5, label="+2 SD (Zona Merah)")
+    ax.axhline(0, color="green", linestyle="-", alpha=0.3, label="Median", zorder=1)
+    ax.axhline(-2, color="red", linestyle="--", alpha=0.6, label="-2 SD (Zona Merah)", zorder=1)
+    ax.axhline(2, color="red", linestyle="--", alpha=0.6, label="+2 SD (Zona Merah)", zorder=1)
     
-    # Batas Y dinamis
-    ax.set_ylim(df_plot[col_name].min() - 1, df_plot[col_name].max() + 1)
+    # Batas Y dinamis agar tidak terpotong
+    if not df_plot[col_name].empty:
+        ax.set_ylim(df_plot[col_name].min() - 1.5, df_plot[col_name].max() + 1.5)
 
     ax.set_ylabel(f"Nilai {col_name}") 
     ax.set_title(f"Sebaran Tren {label_text}")
@@ -145,7 +147,6 @@ for col_name, label_text in metrics:
     
     plt.tight_layout()
     st.pyplot(fig)
-
 # =====================================================
 # ANALISIS STATUS GIZI TERAKHIR
 # =====================================================
@@ -219,3 +220,4 @@ with c2:
 with c3:
     st.warning("⚠️ **Gizi Lebih / Obesitas (Biru/Ungu)**")
     st.write("- Evaluasi pola asuh makan (batasi gula & lemak).\n- Tingkatkan aktivitas fisik dan stimulasi motorik.")
+
