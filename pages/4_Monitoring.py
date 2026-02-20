@@ -90,10 +90,18 @@ else:
 
 df_plot = df_plot.sort_values("Tanggal Pengukuran")
 
-# --- GRAFIK TREN Z-SCORE ---
+# 1. Pastikan konversi tanggal lebih fleksibel
+df_ukur["Tanggal Pengukuran"] = pd.to_datetime(df_ukur["Tanggal Pengukuran"], errors="coerce")
+df_ukur = df_ukur.dropna(subset=["Tanggal Pengukuran"])
+
+# 2. Urutkan data berdasarkan tanggal agar tidak ada data yang tertinggal
+df_ukur = df_ukur.sort_values("Tanggal Pengukuran")
+
+# =====================================================
+# GRAFIK TREN (Bagian yang diubah agar 2023 muncul)
+# =====================================================
 st.subheader(f"📈 Grafik Tren Z-Score: {nama_pilihan}")
 
-# 1. DEFINISIKAN METRICS TERLEBIH DAHULU AGAR TIDAK NAMEERROR
 metrics = [
     ("Z-Score BB/U", "Berat Badan menurut Umur (BB/U)"),
     ("Z-Score TB/U", "Tinggi Badan menurut Umur (TB/U)"),
@@ -103,27 +111,21 @@ metrics = [
 for col_name, label_text in metrics:
     fig, ax = plt.subplots(figsize=(11, 5))
     
-    # Pastikan data terurut berdasarkan waktu
-    df_plot = df_plot.sort_values("Tanggal Pengukuran")
-
+    # Gunakan df_plot (pastikan tidak difilter terlalu ketat sebelumnya)
     if mode == "Individu":
-        # Grafik Garis untuk Individu
         ax.plot(df_plot['Tanggal Pengukuran'], df_plot[col_name], 
                 marker="o", linestyle="-", color="#1f77b4", label="Nilai Z-Score")
     else:
-        # 2. SEBARAN MERATA: Gunakan kolom 'Tanggal Pengukuran' asli pada sumbu X
-        # s=25 (ukuran titik), alpha=0.4 (transparansi agar tumpukan data terlihat)
+        # SEBARAN MERATA: Menggunakan Tanggal Pengukuran langsung agar 2023 terlihat sebarannya
         ax.scatter(df_plot['Tanggal Pengukuran'], df_plot[col_name], 
-                   color="#1f77b4", alpha=0.4, s=25, edgecolors='white', 
-                   linewidth=0.3, label="Data Balita")
+                   color="#1f77b4", alpha=0.4, s=30, edgecolors='white', linewidth=0.3, label="Data Balita")
         
-        # Garis Rata-rata Populasi (dihitung per bulan agar tren terlihat jelas)
+        # Garis Rata-rata: Hitung rata-rata per periode agar garis merah tersambung melewati 2023
         avg_trend = df_plot.groupby(df_plot["Tanggal Pengukuran"].dt.to_period("M"))[col_name].mean()
         ax.plot(avg_trend.index.to_timestamp(), avg_trend.values, 
-                color="red", marker="D", markersize=4, linewidth=1.5, 
-                label="Rata-rata Populasi", zorder=5)
+                color="red", marker="D", markersize=4, linewidth=1.5, label="Rata-rata Populasi")
 
-    # 3. LABEL SUMBU X: Tetap tampil TAHUN saja meski data menyebar
+    # PENGATURAN SUMBU X: Menampilkan label per tahun secara otomatis
     ax.xaxis.set_major_locator(mdates.YearLocator()) 
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
     
@@ -132,12 +134,8 @@ for col_name, label_text in metrics:
     ax.axhline(-2, color="red", linestyle="--", alpha=0.5, label="-2 SD")
     ax.axhline(2, color="red", linestyle="--", alpha=0.5, label="+2 SD")
     
-    # Batas sumbu Y otomatis berdasarkan data
-    ax.set_ylim(df_plot[col_name].min() - 1, df_plot[col_name].max() + 1)
-
     ax.set_ylabel(f"Nilai {col_name}") 
     ax.set_title(f"Sebaran Tren {label_text}")
-    
     ax.legend(loc='upper left', fontsize='small', bbox_to_anchor=(1, 1))
     ax.grid(True, linestyle=':', alpha=0.4)
     
@@ -222,6 +220,7 @@ with c2:
 with c3:
     st.warning("⚠️ **Gizi Lebih / Obesitas (Biru/Ungu)**")
     st.write("- Evaluasi pola asuh makan (batasi gula & lemak).\n- Tingkatkan aktivitas fisik dan stimulasi motorik.")
+
 
 
 
