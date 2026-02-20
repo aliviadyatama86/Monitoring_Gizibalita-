@@ -22,7 +22,7 @@ if df_ukur.empty:
     st.stop()
 
 # --- Preprocessing ---
-# REVISI: Pastikan tanggal bersih tanpa jam sejak awal
+# Pastikan tanggal bersih tanpa jam sejak awal
 df_ukur["Tanggal Pengukuran"] = pd.to_datetime(df_ukur["Tanggal Pengukuran"], dayfirst=True, errors="coerce")
 df_ukur = df_ukur.dropna(subset=["Tanggal Pengukuran"])
 
@@ -50,7 +50,7 @@ if mode == "Individu":
     nama_pilihan = st.selectbox("Pilih Balita", daftar_nama)
     df_plot = df_filtered[df_filtered["Nama Anak"] == nama_pilihan].copy()
     
-    # --- TAMBAHAN: RINGKASAN DETEKSI DINI (INDIVIDU) ---
+    # --- RINGKASAN DETEKSI DINI (INDIVIDU) ---
     latest_data = df_plot.sort_values("Tanggal Pengukuran").iloc[-1]
     
     st.markdown("---")
@@ -60,7 +60,6 @@ if mode == "Individu":
     s_tbu = latest_data["Status TB/U"]
     s_bbtb = latest_data["Status BB/TB"]
 
-    # REVISI: Narasi menggunakan tanggal tanpa jam
     tgl_str = latest_data["Tanggal Pengukuran"].strftime('%d-%m-%Y')
 
     if "Gizi Buruk" in s_bbtb or "Sangat Pendek" in s_tbu:
@@ -92,7 +91,7 @@ else:
 df_plot = df_plot.sort_values("Tanggal Pengukuran")
 
 # --- GRAFIK TREN Z-SCORE ---
-st.subheader(f"📈 Grafik Tren Z-Score (Data Bulanan): {nama_pilihan}")
+st.subheader(f"📈 Grafik Tren Z-Score: {nama_pilihan}")
 
 metrics = [
     ("Z-Score BB/U", "Berat Badan menurut Umur (BB/U)"),
@@ -101,29 +100,38 @@ metrics = [
 ]
 
 for col_name, label_text in metrics:
-    fig, ax = plt.subplots(figsize=(10, 4))
+    fig, ax = plt.subplots(figsize=(11, 5))
     
     if mode == "Individu":
+        # Grafik Garis untuk Individu
         x_labels = df_plot["Tanggal Pengukuran"].dt.strftime('%m-%y')
         ax.plot(x_labels, df_plot[col_name], marker="o", linestyle="-", color="#1f77b4", label="Nilai Z-Score")
         rotation, alignment = 45, 'right'
     else:
-        # Grafik Seluruh Data (Scatter + Mean Line)
-        df_plot['Tahun'] = df_plot["Tanggal Pengukuran"].dt.strftime('%Y')
-        x_labels = df_plot['Tahun']
-        ax.scatter(x_labels, df_plot[col_name], color="#1f77b4", alpha=0.3, s=30, label="Sebaran Data Anak")
-        avg_trend = df_plot.groupby('Tahun')[col_name].mean()
-        ax.plot(avg_trend.index, avg_trend.values, color="blue", marker="D", linewidth=2, label="Rata-rata Tren Desa")
-        rotation, alignment = 0, 'center'
+        # REVISI: Scatter Plot dengan Sumbu X Bulanan agar tidak menumpuk vertikal
+        df_plot['Bulan_Plot'] = df_plot["Tanggal Pengukuran"].dt.strftime('%b %Y')
+        # Pastikan urutan kronologis tetap terjaga
+        unique_months = df_plot.sort_values("Tanggal Pengukuran")['Bulan_Plot'].unique()
+        
+        ax.scatter(df_plot['Bulan_Plot'], df_plot[col_name], 
+                   color="#1f77b4", alpha=0.35, s=45, edgecolors='white', label="Data Balita")
+        
+        # Garis Rata-rata Tren Bulanan
+        avg_trend = df_plot.groupby('Bulan_Plot')[col_name].mean().reindex(unique_months)
+        ax.plot(avg_trend.index, avg_trend.values, color="red", marker="D", markersize=5, 
+                linewidth=1.5, label="Rata-rata Populasi", alpha=0.8)
+        
+        rotation, alignment = 45, 'right'
 
+    # Garis ambang batas WHO
     ax.axhline(0, color="green", linestyle="--", alpha=0.5, label="Median")
     ax.axhline(-2, color="red", linestyle="--", alpha=0.5, label="-2 SD")
     ax.axhline(2, color="red", linestyle="--", alpha=0.5, label="+2 SD")
     
     ax.set_ylabel(f"Nilai {col_name}") 
-    ax.set_title(f"Tren {label_text}")
+    ax.set_title(f"Sebaran Tren {label_text}")
     plt.xticks(rotation=rotation, ha=alignment) 
-    ax.legend(loc='upper left', fontsize='small')
+    ax.legend(loc='upper left', fontsize='small', bbox_to_anchor=(1, 1))
     ax.grid(True, linestyle=':', alpha=0.6)
     st.pyplot(fig)
 
@@ -137,7 +145,6 @@ df_latest_status = df_plot.sort_values("Tanggal Pengukuran").groupby("Nama Anak"
 
 col_chart, col_table = st.columns([1.3, 1])
 
-# REVISI: Mapping warna dan kategori sesuai standar target
 colors_map = {
     "Gizi Baik": "#2ecc71", "Resiko Gizi Lbh": "#3498db", 
     "Gizi Kurang": "#f1c40f", "Obesitas": "#e67e22",
@@ -147,7 +154,6 @@ colors_map = {
 with col_chart:
     summary = df_latest_status["Status BB/TB"].value_counts()
     fig_pie, ax_pie = plt.subplots(figsize=(8, 8))
-    
     pie_colors = [colors_map.get(label, "#95a5a6") for label in summary.index]
     explode_values = [0.06] * len(summary) 
 
@@ -161,35 +167,34 @@ with col_chart:
     fig_pie.gca().add_artist(centre_circle)
 
     legend_labels = [f'{l} : {summary[l]} Anak' for l in summary.index]
-    ax_pie.legend(wedges, legend_labels, title="Status Gizi & Populasi", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1))
+    ax_pie.legend(wedges, legend_labels, title="Status Gizi", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1))
     ax_pie.set_title("Distribusi Status Gizi (BB/TB)", pad=20, fontsize=14, weight='bold')
     st.pyplot(fig_pie)
 
 with col_table:
-    # --- REVISI: FILTER DROPDOWN KELOMPOK GIZI ---
     if mode == "Seluruh Data":
         st.write("**🔍 Filter Detail Kelompok Gizi:**")
-        
-        # Opsi dropdown sesuai urutan standar gizi
         opsi_gizi = ["Gizi Buruk", "Gizi Kurang", "Gizi Baik", "Resiko Gizi Lbh", "Gizi Lebih", "Obesitas"]
         opsi_tersedia = [o for o in opsi_gizi if o in df_latest_status["Status BB/TB"].unique()]
+        pilihan = st.selectbox("Pilih Kategori:", opsi_tersedia)
         
-        pilihan = st.selectbox("Pilih Kategori untuk Lihat Detail:", opsi_tersedia)
-        
-        # Filter Data
         df_detail = df_latest_status[df_latest_status["Status BB/TB"] == pilihan].copy()
         
-        # Format tanggal agar jam hilang (Tampilan lebih bersih dari image_33b460)
+        # Format tanggal agar jam hilang
         df_detail["Tanggal"] = df_detail["Tanggal Pengukuran"].dt.strftime('%d-%m-%Y')
         
-        # --- PERBAIKAN UTAMA: Tambahkan 'Nama Ibu' dan 'Posyandu' di sini ---
-        show_cols = ["Nama Anak", "Nama Ibu", "Posyandu", "Tanggal", "Status BB/TB"]
-        
-        # Pastikan kolom benar-benar ada di dataframe sebelum ditampilkan
+        # REVISI: Menghilangkan Nama Ibu & Posyandu agar tidak error
+        show_cols = ["Nama Anak", "Tanggal", "Status BB/TB"]
         actual_cols = [c for c in show_cols if c in df_detail.columns]
         
         st.dataframe(df_detail[actual_cols], use_container_width=True, hide_index=True)
-        st.write(f"Total: {len(df_detail)} anak dalam kategori {pilihan}")
+        st.write(f"Total: {len(df_detail)} anak")
+    else:
+        st.write("**Riwayat Pengukuran Terakhir:**")
+        df_table = df_plot.copy()
+        df_table["Tanggal"] = df_table["Tanggal Pengukuran"].dt.strftime('%m-%y')
+        display_cols = ["Nama Anak", "Tanggal", "Status BB/U", "Status TB/U", "Status BB/TB"]
+        st.dataframe(df_table[display_cols], use_container_width=True, hide_index=True)
 
 # =====================================================
 # EDUKASI
@@ -208,4 +213,3 @@ with c2:
 with c3:
     st.warning("⚠️ **Gizi Lebih / Obesitas (Biru/Ungu)**")
     st.write("- Evaluasi pola asuh makan (batasi gula & lemak).\n- Tingkatkan aktivitas fisik dan stimulasi motorik.")
-
