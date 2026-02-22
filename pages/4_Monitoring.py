@@ -105,21 +105,19 @@ for col_name, label_text in metrics:
     unique_years = sorted(df_plot['Tahun_Plot'].unique())
 
     if mode == "Individu":
-        # Grafik Garis untuk Individu
-        df_plot_sorted = df_plot.sort_values("Tanggal Pengukuran")
-        ax.plot(df_plot_sorted['Tanggal Pengukuran'], df_plot_sorted[col_name], 
+        # 1. Pastikan data terurut berdasarkan tanggal
+        df_plot_sorted = df_plot.sort_values("Tanggal Pengukuran").copy()
+        
+        # 2. BUAT LABEL TEKS (Hanya bulan/tahun yang ada datanya)
+        # Kita ubah kolom tanggal menjadi string agar Matplotlib tidak membuat skala waktu otomatis
+        df_plot_sorted['Label_X'] = df_plot_sorted['Tanggal Pengukuran'].dt.strftime('%b %Y')
+        
+        # 3. PLOT menggunakan label teks sebagai sumbu X
+        ax.plot(df_plot_sorted['Label_X'], df_plot_sorted[col_name], 
                 marker="o", linestyle="-", color="#1f77b4", label="Nilai Z-Score", markersize=8)
         
-        # --- PERBAIKAN DI SINI ---
-        # Menggunakan format Nama Bulan (singkat) dan Tahun (Contoh: Jan 2024)
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y')) 
-        
-        # Memastikan label muncul untuk setiap bulan yang memiliki data pengukuran
-        ax.xaxis.set_major_locator(mdates.MonthLocator()) 
-        
-        # Rotasi label sumbu X agar tidak tumpang tindih karena teks lebih panjang
-        plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
-        # -------------------------
+        # 4. Rotasi label agar tidak bertumpuk
+        plt.xticks(rotation=45, ha="right")
     
     else:
         # MODE SELURUH DATA: Perbaikan ukuran titik dan sebaran
@@ -228,5 +226,6 @@ with c2:
 with c3:
     st.warning("⚠️ **Gizi Lebih / Obesitas (Biru/Ungu)**")
     st.write("- Evaluasi pola asuh makan (batasi gula & lemak).\n- Tingkatkan aktivitas fisik dan stimulasi motorik.")
+
 
 
