@@ -110,8 +110,16 @@ for col_name, label_text in metrics:
         ax.plot(df_plot_sorted['Tanggal Pengukuran'], df_plot_sorted[col_name], 
                 marker="o", linestyle="-", color="#1f77b4", label="Nilai Z-Score", markersize=8)
         
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
-        ax.xaxis.set_major_locator(mdates.YearLocator())
+        # --- PERBAIKAN DI SINI ---
+        # Menggunakan format Nama Bulan (singkat) dan Tahun (Contoh: Jan 2024)
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y')) 
+        
+        # Memastikan label muncul untuk setiap bulan yang memiliki data pengukuran
+        ax.xaxis.set_major_locator(mdates.MonthLocator()) 
+        
+        # Rotasi label sumbu X agar tidak tumpang tindih karena teks lebih panjang
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
+        # -------------------------
     
     else:
         # MODE SELURUH DATA: Perbaikan ukuran titik dan sebaran
@@ -220,4 +228,5 @@ with c2:
 with c3:
     st.warning("⚠️ **Gizi Lebih / Obesitas (Biru/Ungu)**")
     st.write("- Evaluasi pola asuh makan (batasi gula & lemak).\n- Tingkatkan aktivitas fisik dan stimulasi motorik.")
+
 
